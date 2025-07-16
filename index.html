@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Correctify</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(to right, #eef2f3, #8e9eab);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 12px;
+            width: 100%;
+            max-width: 800px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+            transition: 0.3s;
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #333;
+            font-size: 28px;
+            letter-spacing: 1px;
+        }
+
+        textarea {
+            width: 100%;
+            height: 200px;
+            font-size: 16px;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            transition: 0.2s ease-in-out;
+            resize: vertical;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 5px rgba(0, 123, 255, 0.3);
+        }
+
+        .counter {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 15px;
+            text-align: right;
+        }
+
+        button {
+            padding: 12px 25px;
+            font-size: 16px;
+            border: none;
+            border-radius: 6px;
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+            transition: background 0.2s;
+            display: block;
+            margin: 0 auto;
+        }
+
+        button:hover {
+            background: #0056b3;
+        }
+
+        .result-box {
+            margin-top: 25px;
+            background: #f9f9f9;
+            padding: 20px;
+            border-left: 5px solid #007bff;
+            border-radius: 8px;
+            white-space: pre-wrap;
+            color: #333;
+        }
+
+        .metrics {
+            margin-top: 10px;
+            font-size: 15px;
+            color: #444;
+        }
+
+        .loader {
+            display: none;
+            margin: 10px auto;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #007bff;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h2>✍️ Correctify – AI Essay Helper</h2>
+        <textarea id="essayInput" placeholder="Enter your essay here..." oninput="updateCounter()"></textarea>
+        <div class="counter" id="counter">Words: 0 | Characters: 0</div>
+        <button onclick="getFeedback()">🔍 Check for Mistakes</button>
+        <div class="loader" id="loader"></div>
+        <div class="result-box" id="result" style="display:none;"></div>
+    </div>
+
+    <script>
+        const URL = "https://correctify.onrender.com/correct";
+
+        function highlightChanges(original, corrected) {
+            const oWords = original.split(/\s+/);
+            const cWords = corrected.split(/\s+/);
+            return cWords.map((w, i) =>
+                w !== oWords[i]
+                    ? `<span class="corrected" title="Original: ${oWords[i] || ''}">${w}</span>`
+                    : w
+            ).join(" ");
+        }
+
+        function countMistakes(original, corrected) {
+            const oWords = original.split(/\s+/);
+            const cWords = corrected.split(/\s+/);
+            let count = 0;
+            for (let i = 0; i < cWords.length; i++) {
+                if (oWords[i] !== cWords[i]) count++;
+            }
+            return count;
+        }
+
+        function updateCounter() {
+            const input = document.getElementById("essayInput").value.trim();
+            const words = input === "" ? 0 : input.split(/\s+/).length;
+            const characters = input.length;
+            document.getElementById("counter").innerText = `Words: ${words} | Characters: ${characters}`;
+        }
+
+        async function getFeedback() {
+            const input = document.getElementById("essayInput").value.trim();
+            if (!input) return alert("⚠️ Please enter some text first!");
+
+            const loader = document.getElementById("loader");
+            const resultBox = document.getElementById("result");
+            loader.style.display = "block";
+            resultBox.style.display = "none";
+
+            try {
+                const res = await fetch(URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ text: input })
+                });
+
+                const data = await res.json();
+                const { original, corrected, explanation } = data;
+
+                const highlighted = highlightChanges(original, corrected);
+                const mistakes = countMistakes(original, corrected);
+
+                const resultHTML = `
+          <strong>✅ Corrected Text:</strong><br>${highlighted}
+          <hr>
+          <strong>🧠 Explanation:</strong><br>${explanation}
+          <hr>
+          <div class="metrics">
+            🔢 <strong>Total Corrections:</strong> ${mistakes}
+          </div>
+        `;
+
+                resultBox.innerHTML = resultHTML;
+                resultBox.style.display = "block";
+            } catch (error) {
+                resultBox.innerHTML = "❌ Something went wrong. Please try again later.";
+                resultBox.style.display = "block";
+            } finally {
+                loader.style.display = "none";
+            }
+        }
+    </script>
+</body>
+
+</html>
